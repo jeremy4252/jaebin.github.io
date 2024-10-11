@@ -1,0 +1,272 @@
+<remix_instructions>The following is an artifact created from an earlier conversation. Please begin the conversation by reproducing the content in the appropriate artifact line by line without any change. Doing so will render the artifact in the UI and allows the user to interact with it. To maintain functionality and usefulness, any changes and remixes created in this conversation should maintain the full content each time without omission (e.g. Do not leave comments like "// Rest of the code here...").</remix_instructions>
+<artifact>
+<title>Simple Platform Game</title>
+<type>text/html</type>
+undefined
+<content><!DOCTYPE html>
+<html>
+<head>
+    <title>Platform Game</title>
+    <style>
+        #gameCanvas {
+            border: 2px solid black;
+            background-color: #87CEEB;
+        }
+        #gameStats {
+            font-family: Arial, sans-serif;
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        #timeLeft {
+            color: #FF5733;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameStats">
+        Time: <span id="timeLeft">60</span>s | 
+        Coins: <span id="coinCount">0</span> / <span id="totalCoins">0</span>
+    </div>
+    <canvas id="gameCanvas" width="800" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const coinDisplay = document.getElementById('coinCount');
+        const totalCoinsDisplay = document.getElementById('totalCoins');
+        const timeDisplay = document.getElementById('timeLeft');
+
+        // Game settings
+        const GAME_TIME = 60; // 60 seconds time limit
+        const NUMBER_OF_COINS = 15;
+        let timeLeft = GAME_TIME;
+        let gameTimer;
+        let isGameActive = false;
+
+        // Game objects
+        const player = {
+            x: 50,
+            y: 200,
+            width: 30,
+            height: 30,
+            speed: 5,
+            jumpForce: 12,
+            gravity: 0.5,
+            velocityY: 0,
+            isJumping: false
+        };
+
+        const platforms = [
+            {x: 0, y: 350, width: 800, height: 50},    // Ground
+            {x: 300, y: 250, width: 100, height: 20},  // Platform 1
+            {x: 500, y: 150, width: 100, height: 20},  // Platform 2
+            {x: 100, y: 200, width: 100, height: 20},  // Platform 3
+            {x: 700, y: 200, width: 100, height: 20},  // Platform 4
+            {x: 200, y: 150, width: 100, height: 20}   // Platform 5
+        ];
+
+        const coins = [];
+        let coinCount = 0;
+
+        // Game controls
+        const keys = {
+            right: false,
+            left: false,
+            up: false
+        };
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'ArrowRight') keys.right = true;
+            if (e.key === 'ArrowLeft') keys.left = true;
+            if (e.key === 'ArrowUp') keys.up = true;
+            if (e.key === 'Enter' && !isGameActive) startGame();
+        });
+
+        document.addEventListener('keyup', function(e) {
+            if (e.key === 'ArrowRight') keys.right = false;
+            if (e.key === 'ArrowLeft') keys.left = false;
+            if (e.key === 'ArrowUp') keys.up = false;
+        });
+
+        function generateCoins() {
+            coins.length = 0;
+            platforms.forEach(platform => {
+                const numCoinsOnPlatform = Math.floor(Math.random() * 3) + 1;
+                for (let i = 0; i < numCoinsOnPlatform; i++) {
+                    const coinX = platform.x + Math.random() * (platform.width - 20);
+                    const coinY = platform.y - 30;
+                    coins.push({x: coinX, y: coinY, collected: false});
+                }
+            });
+
+            while (coins.length < NUMBER_OF_COINS) {
+                const coinX = Math.random() * (canvas.width - 20);
+                const coinY = Math.random() * (canvas.height - 100);
+                coins.push({x: coinX, y: coinY, collected: false});
+            }
+
+            totalCoinsDisplay.textContent = NUMBER_OF_COINS;
+        }
+
+        function movePlayer() {
+            if (keys.right) player.x += player.speed;
+            if (keys.left) player.x -= player.speed;
+            if (keys.up && !player.isJumping) {
+                player.velocityY = -player.jumpForce;
+                player.isJumping = true;
+            }
+
+            player.velocityY += player.gravity;
+            player.y += player.velocityY;
+
+            platforms.forEach(platform => {
+                if (player.y + player.height > platform.y &&
+                    player.y < platform.y + platform.height &&
+                    player.x + player.width > platform.x &&
+                    player.x < platform.x + platform.width) {
+                    if (player.velocityY > 0) {
+                        player.isJumping = false;
+                        player.velocityY = 0;
+                        player.y = platform.y - player.height;
+                    }
+                }
+            });
+
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+            if (player.y < 0) player.y = 0;
+            if (player.y + player.height > canvas.height) {
+                player.y = canvas.height - player.height;
+                player.isJumping = false;
+                player.velocityY = 0;
+            }
+        }
+
+        function checkCoinCollision() {
+            coins.forEach(coin => {
+                if (!coin.collected &&
+                    player.x < coin.x + 20 &&
+                    player.x + player.width > coin.x &&
+                    player.y < coin.y + 20 &&
+                    player.y + player.height > coin.y) {
+                    coin.collected = true;
+                    coinCount++;
+                    coinDisplay.textContent = coinCount;
+                    
+                    if (coinCount === NUMBER_OF_COINS) {
+                        endGame(true);
+                    }
+                }
+            });
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            timeDisplay.textContent = timeLeft;
+            
+            if (timeLeft <= 10) {
+                timeDisplay.style.color = 'red';
+            }
+            
+            if (timeLeft <= 0) {
+                endGame(false);
+            }
+        }
+
+        function startGame() {
+            resetGame();
+            isGameActive = true;
+            gameTimer = setInterval(updateTimer, 1000);
+            gameLoop();
+        }
+
+        function endGame(isWin) {
+            isGameActive = false;
+            clearInterval(gameTimer);
+            
+            if (isWin) {
+                alert(`Congratulations! You collected all coins with ${timeLeft} seconds left!`);
+            } else {
+                alert(`Time's up! You collected ${coinCount} out of ${NUMBER_OF_COINS} coins.`);
+            }
+            
+            setTimeout(() => {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                ctx.fillStyle = 'white';
+                ctx.font = '30px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('Press Enter to Play Again', canvas.width / 2, canvas.height / 2);
+            }, 100);
+        }
+
+        function resetGame() {
+            coinCount = 0;
+            timeLeft = GAME_TIME;
+            coinDisplay.textContent = coinCount;
+            timeDisplay.textContent = timeLeft;
+            timeDisplay.style.color = '#FF5733';
+            
+            player.x = 50;
+            player.y = 200;
+            player.velocityY = 0;
+            
+            generateCoins();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw platforms
+            ctx.fillStyle = 'green';
+            platforms.forEach(platform => {
+                ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+            });
+
+            // Draw coins
+            coins.forEach(coin => {
+                if (!coin.collected) {
+                    ctx.fillStyle = 'gold';
+                    ctx.beginPath();
+                    ctx.arc(coin.x + 10, coin.y + 10, 10, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = 'white';
+                    ctx.beginPath();
+                    ctx.arc(coin.x + 5, coin.y + 5, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            });
+
+            // Draw player
+            ctx.fillStyle = 'red';
+            ctx.fillRect(player.x, player.y, player.width, player.height);
+        }
+
+        function gameLoop() {
+            if (!isGameActive) return;
+            
+            movePlayer();
+            checkCoinCollision();
+            draw();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initial setup
+        resetGame();
+        draw();
+        
+        // Show start message
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = 'white';
+        ctx.font = '30px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('Press Enter to Start', canvas.width / 2, canvas.height / 2);
+    </script>
+</body>
+</html>
+</content>
+</artifact>
