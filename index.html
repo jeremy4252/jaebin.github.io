@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>운동 추천 챗봇</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #e6f0ff; /* 연한 파란색 배경 */
+            margin: 0;
+            padding: 20px;
+        }
+        #chatbox {
+            background-color: #ffffff; /* 흰색 챗박스 */
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            max-width: 600px;
+            margin: auto;
+            height: 400px;
+            overflow-y: auto;
+        }
+        .message {
+            margin: 10px 0;
+        }
+        .user {
+            text-align: right;
+            color: #0056b3; /* 사용자 메시지 파란색 */
+        }
+        .bot {
+            text-align: left;
+            color: #007bff; /* 챗봇 메시지 파란색 */
+        }
+        input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #007bff; /* 파란색 테두리 */
+            margin-top: 10px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff; /* 파란색 버튼 */
+            border: none;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        button:hover {
+            background-color: #0056b3; /* 버튼 hover 시 다크 블루 */
+        }
+        #apikey-container {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="apikey-container">
+    <input type="text" id="apikey" placeholder="API 키 입력" />
+    <button onclick="setApiKey()">저장</button>
+</div>
+
+<div id="chatbox"></div>
+<input type="text" id="userInput" placeholder="운동 종목을 추천해 주세요" />
+<button onclick="sendMessage()">전송</button>
+
+<script>
+    let apiKey = localStorage.getItem('apiKey');
+
+    function setApiKey() {
+        apiKey = document.getElementById('apikey').value;
+        localStorage.setItem('apiKey', apiKey);
+        alert('API 키가 저장되었습니다.');
+    }
+
+    async function sendMessage() {
+        const userInput = document.getElementById('userInput').value;
+        if (!userInput) return;
+
+        appendMessage(userInput, 'user');
+        document.getElementById('userInput').value = '';
+
+        const response = await getBotResponse(userInput);
+        appendMessage(response, 'bot');
+    }
+
+    function appendMessage(message, sender) {
+        const chatbox = document.getElementById('chatbox');
+        const messageDiv = document.createElement('div');
+        messageDiv.classList.add('message', sender);
+        messageDiv.textContent = message;
+        chatbox.appendChild(messageDiv);
+        chatbox.scrollTop = chatbox.scrollHeight; // 자동 스크롤
+    }
+
+    async function getBotResponse(userInput) {
+        const url = 'https://api.openai.com/v1/chat/completions';
+
+        const data = {
+            model: 'gpt-3.5-turbo',
+            messages: [{ role: 'user', content: `오늘 할 운동 종목 추천해 줘: ${userInput}` }],
+            max_tokens: 150,
+        };
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+        return result.choices[0].message.content.trim();
+    }
+</script>
+
+</body>
+</html>
